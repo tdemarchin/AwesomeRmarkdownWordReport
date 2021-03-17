@@ -1,0 +1,139 @@
+---
+title: "Awesome Rmarkdown Word report with programmatically inserted headings, outputs and cross-references"
+author: "Thomas de Marchin"
+date: "17MAR2021"
+output:
+  word_document:
+    reference_docx: "template.docx"
+---
+
+```{r setup, include=FALSE}
+# Let's setup a few things.
+
+rm(list=ls())
+library(knitr)
+library(officedown)
+library(officer)
+library(ggplot2)
+library(tidyverse)
+library(broom)
+library(flextable)
+
+# set chunks defaults
+knitr::opts_chunk$set(
+  echo       = FALSE,
+  message    = FALSE,
+  warning    = FALSE
+)
+
+# set flextable defaults
+knitr::opts_chunk$set(echo = TRUE, fig.cap = TRUE)
+  set_flextable_defaults(
+  font.family = "Arial", font.size = 9, 
+  theme_fun = "theme_vanilla",
+  big.mark="", table.layout="autofit")
+  
+# formatting properties for specific paragraphs
+centeredP <- fp_par(text.align = "center")
+
+```
+
+# Introduction
+
+The aim of this document is to introduce a way to generate word reports from R using Rmarkdown with programmatically inserted headings, outputs and Word cross-references. See XXX to understand the context of this example.
+
+# Data 
+
+We will use the built-in iris dataset as an example.
+This dataset consists in Petal and Sepal width and length measurements for three iris species.
+Table `r run_reference("summaryTable")` shows summary statistics.
+
+```{r data, echo = FALSE}
+# this chunk is a normal chunk compared to the next one
+
+# create the bookmark for the summary table
+tab_num <- run_autonum(seq_id = "Table", pre_label = "Table ", bkm = "summaryTable")
+# add the caption
+block_caption(label= "Summary table for the iris dataset",
+              style = "caption", autonum = tab_num)
+
+# create the summary table and output it with flextable()
+summaryData <- iris %>% gather(value="value", key="Attribute", -Species) %>% group_by(Attribute, Species) %>% summarise(n=n(), mean=mean(value), sd=sd(value), min=min(value), max=max(value)) 
+summaryData %>% flextable() %>% merge_v(j = "Attribute") %>% colformat_double(j=c("mean", "sd"), digits = 2)
+```
+
+# Analysis
+
+```{r analysis, echo = FALSE, results = 'asis'}
+# this chunk will programmatically generates Markdown code (results='asis')
+
+# split the data by specie to simulate different attributes to analyze, it is here 3 here but it could be any number.
+data <- split(iris, iris$Species)
+uniqueSpecies <- levels(iris$Species)
+
+# for loop
+for(i in 1:length(uniqueSpecies)){
+  
+  dataSubset <- data[[uniqueSpecies[i]]]
+    
+  # print the heading
+  cat("\n##", uniqueSpecies[i], "\n")
+  
+  # print an empty line
+  cat("\n  <br>  \n")
+  
+  # print some text
+  cat("Figure ")
+  # reference the figure below (note the use of knit_print_run function in 'asis' chunks)
+  knit_print_run(run_reference(paste0("pData", uniqueSpecies[i])))
+  cat(" shows the relation between Sepal width and length.")
+  
+  # plot the data 
+  pData <- ggplot(aes(x=Sepal.Length, y=Sepal.Width), data=dataSubset) + 
+    geom_point() + geom_smooth(method='lm', se=F) + labs(title=uniqueSpecies[i])
+  
+  # output the plot (note the use of the print function in 'asis' chunks)
+  print(pData)
+  
+  cat("\n") # sometimes you need to add this to make things work
+  
+  # Add the figure numbering and caption (note the use of the knit_print_block function in 'asis' chunks)
+  fig_num <- run_autonum(seq_id = "Figure", pre_label = "Figure ", bkm = paste0("pData", uniqueSpecies[i]))
+  knit_print_block(block_caption(paste0("Scatter plot of Sepal Width vs Sepal Length for ", uniqueSpecies[i], ". Blue line is a linear regression."),
+              style = "caption", autonum = fig_num))
+  
+  
+  # print some text
+  cat("A linear regression was performed using Sepal.Length as the response and Sepal.Width as the explanatory variable. Table ")
+  knit_print_run(run_reference(paste0("tabRegression", uniqueSpecies[i])))
+  cat(" shows the parameters estimates and 95% Confidence intervals.")
+  
+  cat("\n") # sometimes you need to add this to make things work
+  
+  # do a regression generate the fit summary table
+  regression <- lm(Sepal.Length ~ Sepal.Width, data=dataSubset)
+  tabRegression <- tidy(regression)
+  tabRegression <- cbind(tabRegression, confint(regression, level=0.95))
+  
+  # Add the table numbering and caption (note the use of the knit_print_block function in 'asis' chunks)
+  tab_num <- run_autonum(seq_id = "Table", pre_label = "Table ", bkm = paste0("tabRegression", uniqueSpecies[i]))
+  knit_print_block(block_caption(paste0("Parameters estimates of the fit for ", uniqueSpecies[i]),
+              style = "caption", autonum = tab_num))
+  
+  
+  
+  # output the summary table (note the use of knit_print and cat functions in 'asis' chunks)
+  tabRegression %>% flextable() %>% knit_print() %>% cat()
+  
+  cat('\n')
+}
+
+# Add a page break
+run_pagebreak()
+```
+
+# Conclusion
+
+`r fpar(ftext("Congratulations!", fp_text(font.size = 12, bold = TRUE, color = "#C32900")), fp_p = fp_par(text.align = "center"))`
+
+![](cheers.jpg)
