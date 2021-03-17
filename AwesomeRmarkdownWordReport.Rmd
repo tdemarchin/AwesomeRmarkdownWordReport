@@ -40,7 +40,8 @@ centeredP <- fp_par(text.align = "center")
 
 # Introduction
 
-The aim of this document is to introduce a way to generate word reports from R using Rmarkdown with programmatically inserted headings, outputs and Word cross-references. See https://tdemarchin.medium.com/awesome-r-markdown-word-report-with-programmatically-inserted-headings-outputs-and-19ad0de29a22 to understand the context of this example.
+The aim of this document is to introduce a way to generate word reports from R using Rmarkdown with programmatically inserted headings, outputs and Word cross-references. 
+See https://towardsdatascience.com/awesome-r-markdown-word-report-with-programmatically-inserted-headings-outputs-and-19ad0de29a22 to understand the context of this example.
 
 # Data 
 
@@ -58,7 +59,8 @@ block_caption(label= "Summary table for the iris dataset",
               style = "caption", autonum = tab_num)
 
 # create the summary table and output it with flextable()
-summaryData <- iris %>% gather(value="value", key="Attribute", -Species) %>% group_by(Attribute, Species) %>% summarise(n=n(), mean=mean(value), sd=sd(value), min=min(value), max=max(value)) 
+summaryData <- iris %>% gather(value="value", key="Attribute", -Species) %>% group_by(Attribute, Species) %>% 
+summarise(n=n(), mean=mean(value), sd=sd(value), min=min(value), max=max(value)) 
 summaryData %>% flextable() %>% merge_v(j = "Attribute") %>% colformat_double(j=c("mean", "sd"), digits = 2)
 ```
 
